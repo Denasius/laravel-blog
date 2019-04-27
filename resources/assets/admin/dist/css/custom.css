@@ -1,0 +1,12 @@
+.destroy-form{
+	display: inline-block;
+}
+
+.destroy-form button[type="submit"], .destroy-form-btn{
+	border: none;
+	background-color: transparent;
+}
+
+.destroy-form button[type="submit"]:before, .destroy-form-btn:before{
+	color: #72afd2;
+}
