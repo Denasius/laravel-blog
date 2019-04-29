@@ -3,6 +3,7 @@
 namespace App;
 
 use Carbon\Carbon;
+use Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Model;
 use Cviebrock\EloquentSluggable\Sluggable;
@@ -10,7 +11,7 @@ use Cviebrock\EloquentSluggable\Sluggable;
 class Post extends Model
 {
     use Sluggable;
-    protected $fillable = ['title', 'content', 'date'];
+    protected $fillable = ['title', 'content', 'date', 'description'];
 
     const IS_DRAFT = 0;
     const IS_PUBLIC = 1;
@@ -24,6 +25,11 @@ class Post extends Model
     public function author()
     {
     	return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class);
     }
 
     public function tags()
@@ -49,7 +55,7 @@ class Post extends Model
     {
         $post = new static;
         $post->fill($fields);
-        $post->user_id = 1;
+        $post->user_id = Auth::user()->id;
         $post->save();
 
         return $post;
@@ -180,5 +186,61 @@ class Post extends Model
         return (!$this->tags->isEmpty())
                 ? implode(', ', $this->tags->pluck('title')->all())
                 : 'Теги не заданы';
+    }
+
+    public function getCategoryID()
+    {
+        return $this->category != null ? $this->category->id : null;
+    }
+
+    public function getDate()
+    {
+        return Carbon::createFromFormat('d/m/y', $this->date)->format('F d, Y');
+    }
+
+    /*
+    метод для отображения предыдушего поста
+    Запрос в БД, выбираю посты по id, у которых id меньше, чем у текущего
+    Из выдернутых из БД id выбираю максимальный, он и будет предыдущим постом
+    */
+    public function hasPrevious()
+    {
+        
+        return self::where('id', '<', $this->id)->max('id');
+    }
+
+    public function getPrevious()
+    {
+        $postID = $this->hasPrevious(); // возвратит ID
+        return self::find($postID);
+    }
+
+    // то же самое, что и с hasPrevious, только выбираю больше текущего и с минимальным значением
+    public function hasNext()
+    {
+        return self::where('id', '>', $this->id)->min('id');
+    }
+
+    public function getNext()
+    {
+        $postID = $this->hasNext(); 
+        return self::find($postID);
+    }
+
+    public function related()
+    {
+        return self::all()->except($this->id);
+    }
+
+    // Проверка есть у поста категории или нет
+    public function hasCategory()
+    {
+        return $this->category != null ? true : false;
+    }
+
+    // Вывод коментарикв
+    public function getComments()
+    {
+        return $this->comments()->where('status', 1)->get();
     }
 }
